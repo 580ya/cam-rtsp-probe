@@ -7,4 +7,4 @@ uv sync --dev
 uv run pyinstaller --noconfirm --clean --onedir --windowed --name CameraRTSPProbe --add-data "wsdl;wsdl" --collect-all onvif gui.py
 
 # 将 Windows 应用目录打成 zip。
-Compress-Archive -Path "dist/CameraRTSPProbe" -DestinationPath "dist/CameraRTSPProbe-windows.zip" -Force
+Compress-Archive -Path "dist/CameraRTSPProbe" -DestinationPath "dist/CameraRTSPProbe-windows-x86_64.zip" -Force
