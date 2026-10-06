@@ -5,7 +5,7 @@ set -euo pipefail
 uv sync --dev
 
 # 使用 Linux 原生 PyInstaller 构建可分发目录。
-uv run pyinstaller --noconfirm --clean --onedir --windowed --name CameraRTSPProbe --add-data "wsdl:wsdl" --collect-all onvif --collect-all cv2 gui.py
+uv run pyinstaller --noconfirm --clean --onedir --windowed --name CameraRTSPProbe --add-data "wsdl:wsdl" --collect-all onvif --collect-all cv2 --collect-all av gui.py
 
 # 将目录打成 Linux 分发压缩包。
 tar -czf "dist/CameraRTSPProbe-linux-$(uname -m).tar.gz" -C dist CameraRTSPProbe
