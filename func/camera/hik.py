@@ -46,8 +46,8 @@ def _get_replay_window():
     # 取当前时间前一分钟作为回放开始时间。
     start_time = end_time - timedelta(minutes=1)
     return (
-        start_time.strftime("%Y%m%dT%H%M%SZ").lower(),
-        end_time.strftime("%Y%m%dT%H%M%SZ").lower(),
+        start_time.strftime("%Y%m%dT%H%M%SZ"),
+        end_time.strftime("%Y%m%dT%H%M%SZ"),
     )
 
 

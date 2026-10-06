@@ -37,6 +37,8 @@ LANGUAGES = {
         "camera_input": "摄像头信息",
         "ip": "IP 地址",
         "port": "端口",
+        "onvif_port": "ONVIF 端口",
+        "rtsp_port": "RTSP 端口",
         "user": "用户名",
         "password": "密码",
         "brand": "品牌",
@@ -71,6 +73,8 @@ LANGUAGES = {
         "camera_input": "Camera information",
         "ip": "IP address",
         "port": "Port",
+        "onvif_port": "ONVIF port",
+        "rtsp_port": "RTSP port",
         "user": "Username",
         "password": "Password",
         "brand": "Brand",
@@ -288,11 +292,13 @@ class MainWindow(QMainWindow):
         self.brand_input.addItem("", 2)
         self.brand_input.addItem("", 99)
         self.brand_input.setCurrentIndex(2)
+        self._port_default = 80  # 当前品牌对应的默认端口。
         # 创建语言选择框，默认选中中文。
         self.language_input = QComboBox()
         self.language_input.addItem("", "zh")
         self.language_input.addItem("", "en")
         self.language_input.currentIndexChanged.connect(self._on_language_changed)
+        self.brand_input.currentIndexChanged.connect(self._on_brand_changed)
         # 创建探测按钮。
         self.probe_button = QPushButton()
         self.probe_button.clicked.connect(self._start_probe)
@@ -409,7 +415,8 @@ class MainWindow(QMainWindow):
         self.input_group.setTitle(self._text("camera_input"))
         # 更新表单标签。
         self.ip_label.setText(self._text("ip"))
-        self.port_label.setText(self._text("port"))
+        port_key = "onvif_port" if self.brand_input.currentData() == 99 else "rtsp_port"
+        self.port_label.setText(self._text(port_key))
         self.user_label.setText(self._text("user"))
         self.password_label.setText(self._text("password"))
         self.brand_label.setText(self._text("brand"))
@@ -461,6 +468,24 @@ class MainWindow(QMainWindow):
         # 读取下拉框中的语言代码。
         self.language = self.language_input.itemData(index)
         # 刷新界面文案。
+        self._retranslate()
+
+    def _on_brand_changed(self, index):
+        """根据品牌切换端口默认值和端口标签。
+
+        参数：品牌下拉框索引。
+        返回：无。
+        """
+        # 读取当前品牌值。
+        brand = self.brand_input.itemData(index)
+        # ONVIF 使用 HTTP 服务端口，海康/大华使用 RTSP 端口。
+        new_default = 80 if brand == 99 else 554
+        # 只有用户未手动修改默认值时才自动切换端口。
+        if self.port_input.value() == self._port_default:
+            self.port_input.setValue(new_default)
+        # 保存当前品牌默认值，供下一次切换判断。
+        self._port_default = new_default
+        # 刷新端口标签和其他界面文案。
         self._retranslate()
 
     def _start_probe(self):
