@@ -1,21 +1,16 @@
 # -*- coding: utf-8 -*-
-"""摄像头 RTSP 探测与播放 GUI。"""
+"""摄像头 RTSP 地址探测 GUI。"""
 
 import argparse
 import asyncio
-import socket
 import json
-import os
+import socket
 import sys
 import urllib.error
 import urllib.request
 
-import cv2
 import uvicorn
-
-from main import app as api_app
 from PyQt6.QtCore import QThread, Qt, pyqtSignal
-from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -26,17 +21,18 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QPushButton,
-    QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
+from main import app as api_app
+
 
 # 界面支持的语言文案。
 LANGUAGES = {
     "zh": {
-        "window_title": "摄像头 RTSP 探测器",
+        "window_title": "摄像头 RTSP 地址探测器",
         "camera_input": "摄像头信息",
         "ip": "IP 地址",
         "port": "端口",
@@ -49,24 +45,24 @@ LANGUAGES = {
         "language": "语言",
         "chinese": "中文",
         "english": "English",
-        "probe": "获取实时和历史流",
+        "probe": "探测 RTSP 地址",
         "api": "API 地址：{url}",
         "api_starting": "正在启动本地 API……",
         "api_ready": "本地 API 已启动",
         "api_error": "本地 API 启动失败：{error}",
-        "history_note": "历史流固定请求最近 1 分钟；ONVIF 模式的端口按现有 API 作为服务端口使用。",
-        "live": "实时流",
-        "replay": "历史流（最近 1 分钟）",
-        "waiting": "等待播放",
-        "loading": "正在连接……",
-        "no_stream": "未返回流地址",
-        "stream_error": "播放失败：{error}",
+        "history_note": "历史地址固定探测最近 1 分钟；探测只验证地址可访问，不拉流播放。",
+        "live_url": "实时 RTSP 地址",
+        "replay_url": "历史 RTSP 地址（最近 1 分钟）",
+        "copy": "复制地址",
+        "copied": "地址已复制",
+        "no_stream": "未返回地址",
+        "loading": "正在探测……",
         "probe_success": "探测完成",
         "probe_failed": "探测失败：{error}",
         "required_ip": "请输入 IP 地址",
     },
     "en": {
-        "window_title": "Camera RTSP Probe",
+        "window_title": "Camera RTSP Address Probe",
         "camera_input": "Camera information",
         "ip": "IP address",
         "port": "Port",
@@ -79,24 +75,23 @@ LANGUAGES = {
         "language": "Language",
         "chinese": "中文",
         "english": "English",
-        "probe": "Get live and replay streams",
+        "probe": "Probe RTSP addresses",
         "api": "API URL: {url}",
         "api_starting": "Starting local API...",
         "api_ready": "Local API is ready",
         "api_error": "Local API failed: {error}",
-        "history_note": "Replay always requests the latest 1 minute; for ONVIF the port is used as the service port by the existing API.",
-        "live": "Live stream",
-        "replay": "Replay stream (latest 1 minute)",
-        "waiting": "Waiting for stream",
-        "loading": "Connecting...",
-        "no_stream": "No stream URL returned",
-        "stream_error": "Playback failed: {error}",
+        "history_note": "Replay always probes the latest 1 minute; probing validates access but does not play the stream.",
+        "live_url": "Live RTSP address",
+        "replay_url": "Replay RTSP address (latest 1 minute)",
+        "copy": "Copy address",
+        "copied": "Address copied",
+        "no_stream": "No address returned",
+        "loading": "Probing...",
         "probe_success": "Probe completed",
         "probe_failed": "Probe failed: {error}",
         "required_ip": "Please enter an IP address",
     },
 }
-
 
 
 def _get_free_port():
@@ -237,86 +232,13 @@ class ProbeWorker(QThread):
             self.error.emit(str(exc))
 
 
-class StreamWorker(QThread):
-    """在后台线程中读取 RTSP 帧并发送给 Qt 界面。"""
-
-    frame_ready = pyqtSignal(QImage)
-    error = pyqtSignal(str)
-
-    def __init__(self, url, parent=None):
-        """初始化 RTSP 播放线程。
-
-        参数：RTSP 地址和 Qt 父对象。
-        返回：无。
-        """
-        super().__init__(parent)
-        # 保存当前播放地址。
-        self.url = url
-        # 用于通知读取循环停止。
-        self._stopping = False
-
-    def stop(self):
-        """请求停止 RTSP 读取。
-
-        参数：无。
-        返回：无。
-        """
-        # 设置停止标志，读取循环将在下一帧结束。
-        self._stopping = True
-
-    def run(self):
-        """持续读取 RTSP 帧并转换为 QImage。
-
-        参数：无。
-        返回：无。
-        """
-        # 让 OpenCV 优先使用 TCP，适合跨网段摄像头连接。
-        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;5000000"
-        # 创建 OpenCV 视频捕获对象。
-        capture = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
-        if not capture.isOpened():
-            self.error.emit("unable to open RTSP stream")
-            capture.release()
-            return
-
-        try:
-            # 读取直到用户停止、回放结束或设备断开。
-            while not self._stopping:
-                # 从 RTSP 连接读取一帧 BGR 图像。
-                ok, frame = capture.read()
-                if not ok:
-                    self.error.emit("no more frames or connection lost")
-                    break
-                # 将 OpenCV 的 BGR 图像转换为 Qt 使用的 RGB 图像。
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                # 读取图像尺寸和通道信息。
-                height, width, channels = rgb_frame.shape
-                # 复制图像数据，确保信号跨线程后仍然有效。
-                image = QImage(
-                    rgb_frame.data,
-                    width,
-                    height,
-                    channels * width,
-                    QImage.Format.Format_RGB888,
-                ).copy()
-                self.frame_ready.emit(image)
-                # 限制 GUI 更新频率，避免占满主线程事件循环。
-                self.msleep(30)
-        except Exception as exc:
-            # 将 OpenCV 解码异常传递给界面。
-            self.error.emit(str(exc))
-        finally:
-            # 无论连接如何结束都释放摄像头句柄。
-            capture.release()
-
-
 class MainWindow(QMainWindow):
-    """摄像头 RTSP 探测和双流预览主窗口。"""
+    """摄像头 RTSP 地址探测主窗口。"""
 
     def __init__(self, api_url=None):
         """创建主窗口和输入控件。
 
-        参数：API 服务根地址。
+        参数：可选外部 API 服务根地址；不传时由 GUI 启动本地 API。
         返回：无。
         """
         super().__init__()
@@ -329,16 +251,12 @@ class MainWindow(QMainWindow):
             if self.embedded_api
             else api_url.rstrip("/")
         )
-        # 保存本地 API 线程引用。
-        self.api_server = None
         # 默认使用中文界面。
         self.language = "zh"
         # 保存探测线程引用，避免线程被提前回收。
         self.probe_worker = None
-        # 保存实时播放线程引用。
-        self.live_worker = None
-        # 保存历史播放线程引用。
-        self.replay_worker = None
+        # 保存本地 API 线程引用。
+        self.api_server = None
         if self.embedded_api:
             # 创建 GUI 内置的本地 API 服务线程。
             self.api_server = ApiServerThread(self.api_port, self)
@@ -375,14 +293,12 @@ class MainWindow(QMainWindow):
         self.history_note.setWordWrap(True)
         # 创建整体状态提示。
         self.status_label = QLabel()
-        # 创建实时视频标签。
-        self.live_view = self._create_video_view()
-        # 创建历史视频标签。
-        self.replay_view = self._create_video_view()
-        # 创建实时流状态标签。
-        self.live_status = QLabel()
-        # 创建历史流状态标签。
-        self.replay_status = QLabel()
+        # 创建结果区域。
+        self.live_group, self.live_url_input, self.live_copy_button = self._create_result_group()
+        self.replay_group, self.replay_url_input, self.replay_copy_button = self._create_result_group()
+        # 绑定复制按钮。
+        self.live_copy_button.clicked.connect(lambda: self._copy_url("live"))
+        self.replay_copy_button.clicked.connect(lambda: self._copy_url("replay"))
         # 组装窗口布局。
         self._build_layout()
         # 设置初始文案。
@@ -393,22 +309,32 @@ class MainWindow(QMainWindow):
             self.status_label.setText(self._text("api_starting"))
             self.api_server.start()
 
-    def _create_video_view(self):
-        """创建一个用于显示视频帧的 QLabel。
+    def _create_result_group(self):
+        """创建一个 RTSP 地址结果分组。
 
         参数：无。
-        返回：配置好的视频标签。
+        返回：分组框、只读地址框和复制按钮。
         """
-        # 创建黑色背景的视频显示区域。
-        view = QLabel()
-        view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        view.setMinimumSize(480, 270)
-        view.setStyleSheet("background: #111; color: #ddd;")
-        view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        return view
+        # 创建结果分组框。
+        group = QGroupBox()
+        # 创建结果分组布局。
+        layout = QVBoxLayout(group)
+        # 创建只读 RTSP 地址输入框。
+        url_input = QLineEdit()
+        url_input.setReadOnly(True)
+        url_input.setPlaceholderText("rtsp://...")
+        # 创建复制按钮。
+        copy_button = QPushButton()
+        # 创建地址和按钮的横向布局。
+        row_layout = QHBoxLayout()
+        row_layout.addWidget(url_input, 1)
+        row_layout.addWidget(copy_button)
+        # 将地址行加入结果分组。
+        layout.addLayout(row_layout)
+        return group, url_input, copy_button
 
     def _build_layout(self):
-        """构建输入区域和双视频区域。
+        """构建输入区域和地址结果区域。
 
         参数：无。
         返回：无。
@@ -435,20 +361,6 @@ class MainWindow(QMainWindow):
         control_layout = QHBoxLayout()
         control_layout.addWidget(self.probe_button)
         control_layout.addWidget(self.api_label, 1)
-        # 创建实时视频分组。
-        self.live_group = QGroupBox()
-        live_layout = QVBoxLayout(self.live_group)
-        live_layout.addWidget(self.live_view)
-        live_layout.addWidget(self.live_status)
-        # 创建历史视频分组。
-        self.replay_group = QGroupBox()
-        replay_layout = QVBoxLayout(self.replay_group)
-        replay_layout.addWidget(self.replay_view)
-        replay_layout.addWidget(self.replay_status)
-        # 使用水平布局并排展示实时与历史流。
-        video_layout = QHBoxLayout()
-        video_layout.addWidget(self.live_group)
-        video_layout.addWidget(self.replay_group)
         # 创建主布局并加入所有区域。
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
@@ -456,10 +368,11 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(control_layout)
         main_layout.addWidget(self.history_note)
         main_layout.addWidget(self.status_label)
-        main_layout.addLayout(video_layout, 1)
+        main_layout.addWidget(self.live_group)
+        main_layout.addWidget(self.replay_group)
         self.setCentralWidget(central_widget)
-        # 设置一个适合双视频预览的初始窗口大小。
-        self.resize(1280, 760)
+        # 设置适合显示长 RTSP 地址的初始窗口大小。
+        self.resize(1100, 420)
 
     def _text(self, key, **values):
         """读取当前语言的界面文案。
@@ -498,14 +411,10 @@ class MainWindow(QMainWindow):
         self.probe_button.setText(self._text("probe"))
         self.api_label.setText(self._text("api", url=self.api_url))
         self.history_note.setText(self._text("history_note"))
-        self.live_group.setTitle(self._text("live"))
-        self.replay_group.setTitle(self._text("replay"))
-        # 仅在未播放时刷新等待文案。
-        if self.live_worker is None or not self.live_worker.isRunning():
-            self.live_status.setText(self._text("waiting"))
-        if self.replay_worker is None or not self.replay_worker.isRunning():
-            self.replay_status.setText(self._text("waiting"))
-
+        self.live_group.setTitle(self._text("live_url"))
+        self.replay_group.setTitle(self._text("replay_url"))
+        self.live_copy_button.setText(self._text("copy"))
+        self.replay_copy_button.setText(self._text("copy"))
 
     def _on_api_ready(self):
         """处理内置 API 启动完成事件。
@@ -513,7 +422,7 @@ class MainWindow(QMainWindow):
         参数：无。
         返回：无。
         """
-        # API 可用后允许用户发起摄像头探测。
+        # API 可用后允许用户发起地址探测。
         self.probe_button.setEnabled(True)
         # 显示本地服务已经就绪。
         self.status_label.setText(self._text("api_ready"))
@@ -551,9 +460,6 @@ class MainWindow(QMainWindow):
         if not ip:
             self.status_label.setText(self._text("required_ip"))
             return
-        # 停止上一次残留的播放线程。
-        self._stop_stream("live")
-        self._stop_stream("replay")
         # 组装 API 请求体。
         payload = {
             "ip": ip,
@@ -562,7 +468,7 @@ class MainWindow(QMainWindow):
             "password": self.password_input.text(),
             "brand": self.brand_input.currentData(),
         }
-        # 禁止重复点击并显示连接状态。
+        # 禁止重复点击并显示探测状态。
         self.probe_button.setEnabled(False)
         self.status_label.setText(self._text("loading"))
         # 创建后台探测线程。
@@ -587,16 +493,16 @@ class MainWindow(QMainWindow):
         参数：API 返回的字典数据。
         返回：无。
         """
-        # 取出实时流地址。
-        live_url = result.get("live_url")
-        # 取出历史流地址。
-        replay_url = result.get("replay_url")
-        # 清空旧的视频画面。
-        self.live_view.clear()
-        self.replay_view.clear()
-        # 根据 API 返回结果启动两个独立播放线程。
-        self._start_stream("live", live_url)
-        self._start_stream("replay", replay_url)
+        # 取出实时地址。
+        live_url = result.get("live_url") or ""
+        # 取出历史地址。
+        replay_url = result.get("replay_url") or ""
+        # 只显示探测结果，不创建视频播放连接。
+        self.live_url_input.setText(live_url)
+        self.replay_url_input.setText(replay_url)
+        # 只有返回有效地址时才允许复制。
+        self.live_copy_button.setEnabled(bool(live_url))
+        self.replay_copy_button.setEnabled(bool(replay_url))
         # 显示探测完成状态。
         self.status_label.setText(self._text("probe_success"))
 
@@ -609,71 +515,28 @@ class MainWindow(QMainWindow):
         # 将后台错误显示在主状态栏。
         self.status_label.setText(self._text("probe_failed", error=error))
 
-    def _start_stream(self, kind, url):
-        """为指定流创建并启动播放线程。
+    def _copy_url(self, kind):
+        """复制指定类型的 RTSP 地址。
 
-        参数：流类型（live/replay）和 RTSP 地址。
+        参数：地址类型（live/replay）。
         返回：无。
         """
-        # 选择对应的显示控件和线程属性。
-        view = self.live_view if kind == "live" else self.replay_view
-        status = self.live_status if kind == "live" else self.replay_status
-        attribute = "live_worker" if kind == "live" else "replay_worker"
-        if not url:
-            # API 没有返回可用地址时给出明确提示。
-            view.setText(self._text("no_stream"))
-            status.setText(self._text("no_stream"))
-            return
-        # 创建 RTSP 播放线程。
-        worker = StreamWorker(url, self)
-        worker.frame_ready.connect(
-            lambda image, target=view: target.setPixmap(
-                QPixmap.fromImage(image).scaled(
-                    target.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-                )
-            )
-        )
-        worker.error.connect(
-            lambda error, target=status: target.setText(
-                self._text("stream_error", error=error)
-            )
-        )
-        worker.started.connect(
-            lambda target=status: target.setText(self._text("loading"))
-        )
-        worker.finished.connect(
-            lambda target=status: target.setText(self._text("waiting"))
-        )
-        # 保存线程引用并开始读取。
-        setattr(self, attribute, worker)
-        worker.start()
-
-    def _stop_stream(self, kind):
-        """停止指定的视频线程。
-
-        参数：流类型（live/replay）。
-        返回：无。
-        """
-        # 选择对应的线程属性。
-        attribute = "live_worker" if kind == "live" else "replay_worker"
-        # 读取当前线程引用。
-        worker = getattr(self, attribute)
-        if worker is not None and worker.isRunning():
-            # 请求线程停止并等待释放摄像头资源。
-            worker.stop()
-            worker.wait(3000)
-        # 清除线程引用，便于下一次探测重新创建。
-        setattr(self, attribute, None)
+        # 选择需要复制的地址输入框。
+        url_input = self.live_url_input if kind == "live" else self.replay_url_input
+        # 读取当前探测到的地址。
+        url = url_input.text()
+        if url:
+            # 将地址写入 Qt 系统剪贴板。
+            QApplication.clipboard().setText(url)
+            # 提示复制完成。
+            self.status_label.setText(self._text("copied"))
 
     def closeEvent(self, event):
-        """关闭窗口前停止所有后台线程。
+        """关闭窗口前停止后台线程。
 
         参数：Qt 关闭事件。
         返回：无。
         """
-        # 停止两个视频线程。
-        self._stop_stream("live")
-        self._stop_stream("replay")
         # 停止探测线程并等待其退出。
         if self.probe_worker is not None and self.probe_worker.isRunning():
             self.probe_worker.quit()
@@ -693,8 +556,8 @@ def main():
     返回：Qt 应用退出码。
     """
     # 创建命令行参数解析器。
-    parser = argparse.ArgumentParser(description="Camera RTSP probe GUI")
-    # 提供 API 服务地址覆盖选项。
+    parser = argparse.ArgumentParser(description="Camera RTSP address probe GUI")
+    # 提供外部 API 服务地址覆盖选项。
     parser.add_argument("--api-url", default=None, help="use an external API service")
     # 解析命令行参数。
     args = parser.parse_args()

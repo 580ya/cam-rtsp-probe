@@ -28,7 +28,7 @@ GUI 默认使用中文，可切换为 English。品牌值为 1（海康）、2�
 
 ### 跨平台一键运行与构建
 
-目标：支持 macOS、Linux、Windows，用户点击应用即可启动 GUI，并自动启动本机 API 服务。
+目标：支持 macOS、Linux、Windows，用户点击应用即可启动地址探测 GUI，并自动启动本机 API 服务；GUI 不承担视频播放。
 
 建议方案：
 
