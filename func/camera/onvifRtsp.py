@@ -130,6 +130,7 @@ async def main():
     RTSP_PORT = 554  # RTSP 端口
     USERNAME = ""
     PASSWORD = ""
+
     live_rtsp, replay_rtsp = await extract_rtsp_addresses(IP, PORT, RTSP_PORT, USERNAME, PASSWORD)
     print("最终结果：")
     print(f"实时预览 RTSP: {live_rtsp}")
@@ -142,5 +143,5 @@ async def get_onvif_url(IP, PORT, RTSP_PORT, USERNAME, PASSWORD):
 
 
 # 手动调试
-# if __name__ == "__main__":
-#     asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

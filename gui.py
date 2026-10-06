@@ -58,6 +58,9 @@ LANGUAGES = {
         "no_stream": "未返回地址",
         "loading": "正在探测……",
         "probe_success": "探测完成",
+        "probe_missing": "探测完成，但未获取：{items}",
+        "missing_live": "实时 RTSP 地址",
+        "missing_replay": "历史 RTSP 地址",
         "probe_failed": "探测失败：{error}",
         "required_ip": "请输入 IP 地址",
     },
@@ -88,6 +91,9 @@ LANGUAGES = {
         "no_stream": "No address returned",
         "loading": "Probing...",
         "probe_success": "Probe completed",
+        "probe_missing": "Probe completed, but no address was obtained for: {items}",
+        "missing_live": "live RTSP address",
+        "missing_replay": "replay RTSP address",
         "probe_failed": "Probe failed: {error}",
         "required_ip": "Please enter an IP address",
     },
@@ -503,8 +509,24 @@ class MainWindow(QMainWindow):
         # 只有返回有效地址时才允许复制。
         self.live_copy_button.setEnabled(bool(live_url))
         self.replay_copy_button.setEnabled(bool(replay_url))
-        # 显示探测完成状态。
-        self.status_label.setText(self._text("probe_success"))
+        # 根据缺失的结果明确提示用户是哪一种地址未获取。
+        missing_items = []
+        if not live_url:
+            missing_items.append(self._text("missing_live"))
+        if not replay_url:
+            missing_items.append(self._text("missing_replay"))
+        if missing_items:
+            # 中文使用顿号，英文使用逗号分隔缺失项目。
+            separator = "、" if self.language == "zh" else ", "
+            self.status_label.setText(
+                self._text(
+                    "probe_missing",
+                    items=separator.join(missing_items),
+                )
+            )
+        else:
+            # 两种地址都通过验证时显示完整成功状态。
+            self.status_label.setText(self._text("probe_success"))
 
     def _on_probe_error(self, error):
         """显示 API 调用错误。
