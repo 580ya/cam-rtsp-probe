@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 uv sync --dev
 
 # 使用 Windows 原生 PyInstaller 构建无控制台窗口的目录。
-uv run pyinstaller --noconfirm --clean --onedir --windowed --name CameraRTSPProbe --add-data "wsdl;wsdl" --collect-all onvif gui.py
+uv run pyinstaller --noconfirm --clean --onedir --windowed --name CameraRTSPProbe --add-data "wsdl;wsdl" --collect-all onvif --collect-all cv2 gui.py
 
 # 将 Windows 应用目录打成 zip。
 Compress-Archive -Path "dist/CameraRTSPProbe" -DestinationPath "dist/CameraRTSPProbe-windows-x86_64.zip" -Force

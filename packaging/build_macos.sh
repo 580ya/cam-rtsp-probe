@@ -5,7 +5,7 @@ set -euo pipefail
 uv sync --dev
 
 # 使用 macOS 原生 PyInstaller 构建 .app。
-uv run pyinstaller --noconfirm --clean --onedir --windowed --name CameraRTSPProbe --add-data "wsdl:wsdl" --collect-all onvif gui.py
+uv run pyinstaller --noconfirm --clean --onedir --windowed --name CameraRTSPProbe --add-data "wsdl:wsdl" --collect-all onvif --collect-all cv2 gui.py
 
 # 根据 PyInstaller 输出选择应用包路径，兼容 .app 和普通 onedir 目录。
 if [[ -d "dist/CameraRTSPProbe.app" ]]; then

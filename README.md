@@ -22,7 +22,7 @@ uv run python gui.py
 uv run python gui.py --api-url http://API主机:8000
 ```
 
-GUI 默认使用中文，可切换为 English。品牌值为 1（海康）、2（大华）、99（ONVIF 通用），3、4、5 预留给后续品牌；端口默认 554，用户名默认 admin。
+GUI 默认使用中文，可切换为 English。品牌值为 1（海康）、2（大华）、99（ONVIF 通用），3、4、5 预留给后续品牌；ONVIF 品牌默认端口 80，用户名默认 admin；海康和大华的 RTSP 端口通常为 554。
 
 海康历史流使用 `Streaming/tracks` 回放格式，大华历史流使用 `cam/playback` 回放格式；两者都自动请求最近一分钟，并与实时流同时显示。
 

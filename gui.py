@@ -270,10 +270,10 @@ class MainWindow(QMainWindow):
             self.api_server.error.connect(self._on_api_error)
         # 创建 IP 输入框。
         self.ip_input = QLineEdit()
-        # 创建端口输入框并设置用户要求的默认值。
+        # 创建端口输入框并设置 ONVIF 服务默认端口。
         self.port_input = QSpinBox()
         self.port_input.setRange(1, 65535)
-        self.port_input.setValue(554)
+        self.port_input.setValue(80)
         # 创建用户名输入框并设置默认用户。
         self.user_input = QLineEdit("admin")
         # 创建密码输入框并隐藏密码字符。
@@ -284,6 +284,7 @@ class MainWindow(QMainWindow):
         self.brand_input.addItem("", 1)
         self.brand_input.addItem("", 2)
         self.brand_input.addItem("", 99)
+        self.brand_input.setCurrentIndex(2)
         # 创建语言选择框，默认选中中文。
         self.language_input = QComboBox()
         self.language_input.addItem("", "zh")
