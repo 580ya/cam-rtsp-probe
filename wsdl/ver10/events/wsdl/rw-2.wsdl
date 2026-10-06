@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:wsntw="http://docs.oasis-open.org/wsn/bw-2"
+                  targetNamespace="http://docs.oasis-open.org/wsrf/rw-2"
+                  xmlns="http://docs.oasis-open.org/wsrf/rw-2">
+  <wsdl:message name="ResourceUnknownFault"/>
+</wsdl:definitions>

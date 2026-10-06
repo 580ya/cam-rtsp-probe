@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://docs.oasis-open.org/wsn/t-1"
+           xmlns="http://docs.oasis-open.org/wsn/t-1"
+           elementFormDefault="qualified"
+           attributeFormDefault="unqualified">
+  <xs:element name="TopicSet"/>
+  <xs:element name="FixedTopicSet" type="xs:boolean"/>
+  <xs:element name="TopicExpressionDialect" type="xs:anyURI"/>
+</xs:schema>

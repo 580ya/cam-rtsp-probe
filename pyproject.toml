@@ -1,0 +1,19 @@
+[project]
+name = "cam-rtsp-probe"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.142.2",
+    "onvif-zeep>=0.2.12",
+    "opencv-python>=5.0.0.93",
+    "pyqt6==6.7.1",
+    "tzlocal>=5.4.4",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.10",
+]

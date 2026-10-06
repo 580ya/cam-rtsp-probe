@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://docs.oasis-open.org/wsn/b-2"
+           xmlns="http://docs.oasis-open.org/wsn/b-2"
+           elementFormDefault="qualified"
+           attributeFormDefault="unqualified">
+  <xs:element name="NotificationMessage"/>
+  <xs:element name="CurrentTime" type="xs:dateTime"/>
+  <xs:element name="TerminationTime" type="xs:dateTime"/>
+  <xs:complexType name="NotificationMessageHolderType">
+    <xs:sequence>
+      <xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:anyAttribute namespace="##other" processContents="lax"/>
+  </xs:complexType>
+  <xs:complexType name="FilterType">
+    <xs:sequence>
+      <xs:any namespace="##any" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
