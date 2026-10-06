@@ -156,6 +156,8 @@ class ApiServerThread(QThread):
             host="127.0.0.1",
             port=self.port,
             log_level="warning",
+            # PyInstaller 冻结包不使用 Uvicorn 的动态 formatter，避免 Windows 启动时配置失败。
+            log_config=None,
         )
         # 创建 uvicorn 服务实例。
         self.server = uvicorn.Server(config)
