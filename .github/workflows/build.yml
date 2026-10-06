@@ -11,12 +11,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            script: packaging/build_linux.sh
-          - os: macos-latest
+          - os: macos-15-intel
             script: packaging/build_macos.sh
-          - os: windows-latest
+            artifact: macos-x86_64
+          - os: windows-2022
             script: packaging/build_windows.ps1
+            artifact: windows-x86_64
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -46,5 +46,5 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: CameraRTSPProbe-${{ matrix.os }}
+          name: CameraRTSPProbe-${{ matrix.artifact }}
           path: dist/CameraRTSPProbe*
