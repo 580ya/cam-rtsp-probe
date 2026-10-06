@@ -7,6 +7,10 @@ import os
 import sys
 from tzlocal import get_localzone
 from func.camera.checkStream import check_rtsp_stream
+from func.debug_log import configure_logging, describe_rtsp_url
+
+
+LOGGER = configure_logging()
 
 
 # 获取当前模块目录，用于开发环境定位项目资源。
@@ -26,9 +30,11 @@ async def get_capabilities(cam):
     """获取设备支持的服务"""
     try:
         capabilities = cam.devicemgmt.GetCapabilities()
+        LOGGER.info("ONVIF capabilities request succeeded")
         return capabilities
-    except Exception as e:
-        return None  # 获取 Capabilities 时发生错误
+    except Exception:
+        LOGGER.exception("ONVIF capabilities request failed")
+        return None
 
 
 async def get_live_rtsp(cam):
@@ -46,9 +52,11 @@ async def get_live_rtsp(cam):
         stream_request.StreamSetup = {'Stream': 'RTP-Unicast', 'Transport': {'Protocol': 'RTSP'}}
         stream_uri = await asyncio.to_thread(media_service.GetStreamUri, stream_request)
         rtsp_url = stream_uri.Uri
+        LOGGER.info("ONVIF live URI received: %s", describe_rtsp_url(rtsp_url))
         return rtsp_url
-    except Exception as e:
-        return False  # 提取实时预览地址时发生错误
+    except Exception:
+        LOGGER.exception("ONVIF live URI request failed")
+        return False
 
 
 async def get_replay_rtsp_onvif(cam):
@@ -68,9 +76,11 @@ async def get_replay_rtsp_onvif(cam):
         replay_request.StreamSetup = {'Stream': 'RTP-Unicast', 'Transport': {'Protocol': 'RTSP'}}
         replay_uri = await asyncio.to_thread(replay_service.GetReplayUri, replay_request)
         rtsp_url = replay_uri.Uri
+        LOGGER.info("ONVIF replay URI received: %s", describe_rtsp_url(rtsp_url))
         return rtsp_url
-    except Exception as e:
-        return False  # 提取 ONVIF 回放地址时发生错误
+    except Exception:
+        LOGGER.exception("ONVIF replay URI request failed")
+        return False
 
 
 def get_replay_rtsp_custom(ip, rtsp_port, channel=1, subtype=0):
@@ -80,11 +90,18 @@ def get_replay_rtsp_custom(ip, rtsp_port, channel=1, subtype=0):
 
 
 async def extract_rtsp_addresses(ip, port, rtsp_port, username, password):
-    """提取实时预览和历史回放 RTSP 地址（返回纯地址）"""
+    """提取并验证实时与历史 RTSP 地址。
+
+    参数：摄像头 IP、ONVIF 端口、RTSP 端口、用户名和密码。
+    返回：通过读帧验证的实时地址和历史地址，失败项为 False。
+    """
+    LOGGER.info("ONVIF probe started: host=%s onvif_port=%s rtsp_port=%s", ip, port, rtsp_port)
     try:
         cam = ONVIFCamera(ip, port, username, password, wsdl_dir=WSDL_DIR)
-    except Exception as e:
-        return False, False  # 创建 ONVIFCamera 时发生错误
+        LOGGER.info("ONVIF camera object created; wsdl_dir=%s", WSDL_DIR)
+    except Exception:
+        LOGGER.exception("ONVIF camera creation failed: host=%s port=%s", ip, port)
+        return False, False
 
     # 获取当前时间和前1分钟时间（仅用于检查）
     local_tz = get_localzone()  # 提取本地时区
@@ -95,6 +112,7 @@ async def extract_rtsp_addresses(ip, port, rtsp_port, username, password):
     # 检查支持的服务
     capabilities = await get_capabilities(cam)
     support_replay = capabilities and hasattr(capabilities, 'Replay') and capabilities.Replay is not None
+    LOGGER.info("ONVIF replay service supported=%s", bool(support_replay))
 
     # 提取实时预览地址
     _live_rtsp = await get_live_rtsp(cam)
@@ -102,8 +120,10 @@ async def extract_rtsp_addresses(ip, port, rtsp_port, username, password):
 
     if live_check_url and await check_rtsp_accessible(live_check_url):
         live_rtsp = live_check_url
+        LOGGER.info("ONVIF live RTSP validation succeeded")
     else:
         live_rtsp = False
+        LOGGER.warning("ONVIF live RTSP validation failed")
 
     # 提取回放地址
     replay_rtsp = None
@@ -117,8 +137,10 @@ async def extract_rtsp_addresses(ip, port, rtsp_port, username, password):
 
     if replay_check_url and await check_rtsp_accessible(replay_check_url):
         replay_rtsp = replay_check_url
+        LOGGER.info("ONVIF replay RTSP validation succeeded")
     else:
         replay_rtsp = False
+        LOGGER.warning("ONVIF replay RTSP validation failed")
 
     return live_rtsp, replay_rtsp
 

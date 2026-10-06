@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from func.debug_log import get_log_path
 from main import app as api_app
 
 
@@ -47,6 +48,7 @@ LANGUAGES = {
         "english": "English",
         "probe": "探测 RTSP 地址",
         "api": "API 地址：{url}",
+        "debug_log": "调试日志：{path}",
         "api_starting": "正在启动本地 API……",
         "api_ready": "本地 API 已启动",
         "api_error": "本地 API 启动失败：{error}",
@@ -80,6 +82,7 @@ LANGUAGES = {
         "english": "English",
         "probe": "Probe RTSP addresses",
         "api": "API URL: {url}",
+        "debug_log": "Debug log: {path}",
         "api_starting": "Starting local API...",
         "api_ready": "Local API is ready",
         "api_error": "Local API failed: {error}",
@@ -295,6 +298,8 @@ class MainWindow(QMainWindow):
         self.probe_button.clicked.connect(self._start_probe)
         # 创建 API 地址提示。
         self.api_label = QLabel()
+        # 创建调试日志路径提示。
+        self.debug_label = QLabel()
         # 创建历史时间范围提示。
         self.history_note = QLabel()
         self.history_note.setWordWrap(True)
@@ -373,6 +378,7 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
         main_layout.addWidget(self.input_group)
         main_layout.addLayout(control_layout)
+        main_layout.addWidget(self.debug_label)
         main_layout.addWidget(self.history_note)
         main_layout.addWidget(self.status_label)
         main_layout.addWidget(self.live_group)
@@ -417,6 +423,7 @@ class MainWindow(QMainWindow):
         # 更新控制和说明文案。
         self.probe_button.setText(self._text("probe"))
         self.api_label.setText(self._text("api", url=self.api_url))
+        self.debug_label.setText(self._text("debug_log", path=str(get_log_path())))
         self.history_note.setText(self._text("history_note"))
         self.live_group.setTitle(self._text("live_url"))
         self.replay_group.setTitle(self._text("replay_url"))
