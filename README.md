@@ -26,6 +26,18 @@ GUI 默认使用中文，可切换为 English。品牌值为 1（海康）、2�
 
 海康历史流使用 `Streaming/tracks` 回放格式，大华历史流使用 `cam/playback` 回放格式；两者都自动请求最近一分钟，并与实时流同时显示。
 
+### 当前测试说明（中文）
+
+- ONVIF：使用带 SD 卡且已经保存历史录像的摄像头测试，实时流和历史流探测均正常。
+- 海康、大华：当前测试摄像头未接硬盘录像机（NVR），且摄像头不支持 SD 卡，因此没有可供测试的历史录像；实时流探测正常，历史流暂时无法验证。
+- 如需验证海康或大华的历史流，请接入硬盘录像机或可用的 SD 卡，并确认测试时间窗口内已经产生录像。程序只负责探测并返回 RTSP 地址，不负责播放视频。
+
+### Current test status (English)
+
+- ONVIF: tested successfully with a camera that has an SD card containing recorded footage; both live and historical stream probing work.
+- Hikvision and Dahua: the current test cameras are not connected to an NVR and do not support an SD card, so there is no recorded footage available for historical-stream testing. Live-stream probing works; historical-stream probing cannot currently be verified.
+- To verify historical streams for Hikvision or Dahua, connect an NVR or a supported SD card and make sure recordings exist in the requested time window. The application probes and returns RTSP addresses; it does not play video.
+
 ### 跨平台一键运行与构建
 
 目标：支持 macOS、Linux、Windows，用户点击应用即可启动地址探测 GUI，并自动启动本机 API 服务；GUI 不承担视频播放。
@@ -67,7 +79,7 @@ bash packaging/build_macos.sh
 ~~~powershell
 uv sync --dev
 Set-ExecutionPolicy -Scope Process Bypass
-.\packaginguild_windows.ps1
+.\packaging\build_windows.ps1
 ~~~
 
 输出：dist/CameraRTSPProbe-windows.zip。
